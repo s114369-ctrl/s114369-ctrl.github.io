@@ -1,43 +1,51 @@
-<!DOCTYPE html>
+
+
+  <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>互動月曆讀書計畫</title>
+    <title>智能讀書調度器 - 時段加強版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .fc-event { cursor: pointer; }
-        #calendar { background: white; padding: 20px; border-radius: 12px; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
+        .fc-event { cursor: pointer; border: none !important; padding: 3px 6px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; transition: transform 0.1s; }
+        .fc-event:hover { transform: scale(1.02); }
+        #calendar { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .fc-toolbar-title { font-size: 1.25rem !important; font-weight: bold; color: #1e293b; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
+<body class="p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-indigo-700">📅 智能進度月曆</h1>
-            <button onclick="openModal('exam')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">新增考試</button>
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-indigo-900">📅 智能讀書調度系統</h1>
+                <p class="text-slate-500">快速選擇時段，精確掌握進度</p>
+            </div>
+            <button onclick="openModal('exam')" class="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg transition transform active:scale-95">
+                🚩 新增考試項目
+            </button>
         </header>
 
         <div id="calendar"></div>
     </div>
 
-    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
-            <h2 id="modalTitle" class="text-xl font-bold mb-4">標題</h2>
-            <div id="modalBody" class="space-y-4">
-                </div>
-            <div class="mt-6 flex justify-end gap-2">
-                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">取消</button>
-                <button id="saveBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">儲存</button>
+    <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl transition-all">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-slate-800"></h2>
+            <div id="modalBody" class="space-y-4"></div>
+            <div class="mt-8 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-5 py-2 text-slate-400 hover:text-slate-600 font-medium">取消</button>
+                <button id="saveBtn" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md transition">儲存計畫</button>
             </div>
         </div>
     </div>
 
     <script>
-        let events = JSON.parse(localStorage.getItem('study_events')) || [];
+        let events = JSON.parse(localStorage.getItem('study_v5')) || [];
         let calendar;
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -47,14 +55,9 @@
                 locale: 'zh-tw',
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
                 events: events,
-                // 點擊空白日期：新增讀書計畫
-                dateClick: function(info) {
-                    openModal('plan', info.dateStr);
-                },
-                // 點擊現有事件：查看詳情或標記完成
-                eventClick: function(info) {
-                    showEventDetail(info.event);
-                }
+                displayEventTime: false, // 關閉預設時間顯示，我們自訂在標題裡比較美
+                dateClick: (info) => openModal('plan', info.dateStr),
+                eventClick: (info) => showEventDetail(info.event)
             });
             calendar.render();
         });
@@ -65,45 +68,101 @@
             const body = document.getElementById('modalBody');
             const saveBtn = document.getElementById('saveBtn');
             modal.classList.remove('hidden');
+            saveBtn.classList.remove('hidden');
 
             if (type === 'exam') {
-                title.innerText = "新增考試科目";
+                title.innerText = "🚩 新增考試";
                 body.innerHTML = `
-                    <input type="text" id="name" placeholder="科目名稱 (如: 數學)" class="w-full p-2 border rounded">
-                    <input type="date" id="date" class="w-full p-2 border rounded">
-                    <textarea id="range" placeholder="考試範圍" class="w-full p-2 border rounded"></textarea>
+                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600">考試科目</label>
+                    <input type="text" id="name" placeholder="例如：微積分" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-rose-500"></div>
+                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600">考試日期</label>
+                    <input type="date" id="date" class="w-full p-2.5 border rounded-lg"></div>
+                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600">考試範圍</label>
+                    <textarea id="range" placeholder="例如：Chapter 1 - 4" class="w-full p-2.5 border rounded-lg h-24"></textarea></div>
                 `;
                 saveBtn.onclick = () => saveEvent('exam');
             } else if (type === 'plan') {
-                title.innerText = `${dateStr} 讀書計畫`;
+                const subjects = [...new Set(events.filter(e => e.extendedProps.type === 'exam').map(e => e.extendedProps.originalName))];
+                let options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+                
+                title.innerText = `📝 安排計畫 (${dateStr})`;
                 body.innerHTML = `
-                    <input type="text" id="name" placeholder="預定讀什麼？(如: 複習數學Ch1)" class="w-full p-2 border rounded">
-                    <input type="number" id="hours" placeholder="預定時數" class="w-full p-2 border rounded">
+                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600 text-xs">選擇科目或活動</label>
+                    <select id="subjectSelect" onchange="toggleOtherInput(this.value)" class="w-full p-2.5 border rounded-lg bg-slate-50">
+                        <option value="">-- 請選擇 --</option>
+                        ${options}
+                        <option value="other">🎨 其他活動</option>
+                    </select></div>
+                    <div id="otherInputArea" class="hidden space-y-1">
+                        <input type="text" id="otherName" placeholder="活動名稱 (如：運動、休息)" class="w-full p-2.5 border rounded-lg border-indigo-300">
+                    </div>
+                    
+                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600 text-xs">時段快選 (選填)</label>
+                    <select id="periodSelect" onchange="applyPeriod(this.value)" class="w-full p-2.5 border rounded-lg bg-indigo-50 text-indigo-700 font-medium">
+                        <option value="">自訂 / 全天</option>
+                        <option value="早上">早上 (08:00~)</option>
+                        <option value="中午">中午 (12:00~)</option>
+                        <option value="晚上">晚上 (19:00~)</option>
+                    </select></div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1"><label class="text-sm text-slate-400 text-xs">開始時間</label>
+                        <input type="time" id="startTime" class="w-full p-2.5 border rounded-lg text-sm"></div>
+                        <div class="space-y-1"><label class="text-sm text-slate-400 text-xs">結束時間</label>
+                        <input type="time" id="endTime" class="w-full p-2.5 border rounded-lg text-sm"></div>
+                    </div>
+                    
+                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600 text-xs">詳細範圍/備註</label>
+                    <input type="text" id="planRange" placeholder="今天要完成什麼？" class="w-full p-2.5 border rounded-lg"></div>
                     <input type="hidden" id="date" value="${dateStr}">
-                    <p class="text-xs text-gray-400">提示：如果名稱包含科目，完成後對應考試會變綠色</p>
                 `;
                 saveBtn.onclick = () => saveEvent('plan');
             }
         }
 
-        function saveEvent(type) {
-            const name = document.getElementById('name').value;
-            const date = document.getElementById('date').value;
-            const rangeOrHours = document.getElementById('range')?.value || document.getElementById('hours')?.value;
+        function applyPeriod(val) {
+            const start = document.getElementById('startTime');
+            const end = document.getElementById('endTime');
+            if (val === '早上') { start.value = "08:00"; end.value = "10:00"; }
+            else if (val === '中午') { start.value = "12:00"; end.value = "14:00"; }
+            else if (val === '晚上') { start.value = "19:00"; end.value = "21:00"; }
+            else { start.value = ""; end.value = ""; }
+        }
 
-            if (!name || !date) return alert("請填寫必填欄位");
+        function toggleOtherInput(val) {
+            document.getElementById('otherInputArea').classList.toggle('hidden', val !== 'other');
+        }
+
+        function saveEvent(type) {
+            const date = document.getElementById('date').value;
+            let name, range, color, startTime, endTime, periodLabel = "";
+
+            if (type === 'exam') {
+                name = document.getElementById('name').value;
+                range = document.getElementById('range').value;
+                color = '#f43f5e';
+            } else {
+                const sel = document.getElementById('subjectSelect').value;
+                name = (sel === 'other') ? document.getElementById('otherName').value : sel;
+                range = document.getElementById('planRange').value;
+                startTime = document.getElementById('startTime').value;
+                endTime = document.getElementById('endTime').value;
+                periodLabel = document.getElementById('periodSelect').value;
+                color = (sel === 'other') ? '#94a3b8' : '#6366f1';
+            }
+
+            if (!name || !date) return alert("請填寫科目或活動名稱");
+
+            const timeTitle = periodLabel ? `(${periodLabel}) ` : (startTime ? `[${startTime}] ` : '');
 
             const newEvent = {
                 id: 'id-' + Date.now(),
-                title: (type === 'exam' ? '🚫 ' : '📖 ') + name,
-                start: date,
-                extendedProps: {
-                    type: type,
-                    range: rangeOrHours,
-                    originalName: name,
-                    isDone: false
-                },
-                color: type === 'exam' ? '#ef4444' : '#3b82f6' // 考試紅色，計畫藍色
+                title: (type === 'exam' ? '🚩 ' : '● ') + timeTitle + name,
+                start: (type === 'plan' && startTime) ? `${date}T${startTime}` : date,
+                end: (type === 'plan' && endTime) ? `${date}T${endTime}` : date,
+                allDay: (type === 'exam' || !startTime),
+                color: color,
+                extendedProps: { type, range, originalName: name, isDone: false, startTime, endTime, periodLabel }
             };
 
             events.push(newEvent);
@@ -116,30 +175,38 @@
             const modal = document.getElementById('modal');
             document.getElementById('modalTitle').innerText = event.title;
             document.getElementById('modalBody').innerHTML = `
-                <p><strong>類型：</strong>${props.type === 'exam' ? '考試' : '讀書計畫'}</p>
-                <p><strong>內容：</strong>${props.range}</p>
-                <p><strong>狀態：</strong>${props.isDone ? '✅ 已完成' : '❌ 未完成'}</p>
-                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-4 bg-green-500 text-white py-2 rounded">標記為已讀完</button>` : ''}
-                <button onclick="deleteEvent('${event.id}')" class="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded">刪除</button>
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="px-2 py-1 rounded-md text-xs font-bold ${props.type === 'exam' ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}">
+                            ${props.type === 'exam' ? '🚨 考試' : '📅 計畫'}
+                        </span>
+                        <span class="text-xs text-slate-400">${props.isDone ? '✅ 已完成' : '⏳ 進行中'}</span>
+                    </div>
+                    <p class="text-slate-700"><strong>時段：</strong> ${props.periodLabel || (props.startTime ? props.startTime + ' ~ ' + props.endTime : '全天')}</p>
+                    <p class="text-slate-700"><strong>內容：</strong> ${props.range || '無'}</p>
+                </div>
+                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-6 bg-emerald-500 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition">標記為讀完</button>` : ''}
+                <button onclick="deleteEvent('${event.id}')" class="w-full mt-3 text-slate-400 text-xs hover:text-rose-500 hover:underline transition">刪除此項目</button>
             `;
             document.getElementById('saveBtn').classList.add('hidden');
             modal.classList.remove('hidden');
         }
 
         function markAsDone(id) {
-            const eventIndex = events.findIndex(e => e.id === id);
-            if (eventIndex > -1) {
-                events[eventIndex].extendedProps.isDone = true;
-                events[eventIndex].color = '#10b981'; // 變成綠色
+            const idx = events.findIndex(e => e.id === id);
+            if (idx > -1) {
+                events[idx].extendedProps.isDone = true;
+                events[idx].color = '#10b981';
                 
-                // 聯動邏輯：如果讀的是某科目，把該科目的「考試」也變綠色
-                const subject = events[eventIndex].extendedProps.originalName;
-                events.forEach(e => {
-                    if (e.extendedProps.type === 'exam' && e.extendedProps.originalName.includes(subject)) {
-                        e.extendedProps.isDone = true;
-                        e.color = '#10b981';
-                    }
-                });
+                const sub = events[idx].extendedProps.originalName;
+                if (events[idx].extendedProps.type === 'plan') {
+                    events.forEach(e => {
+                        if (e.extendedProps.type === 'exam' && e.extendedProps.originalName === sub) {
+                            e.extendedProps.isDone = true;
+                            e.color = '#10b981';
+                        }
+                    });
+                }
             }
             updateStorage();
             closeModal();
@@ -152,14 +219,13 @@
         }
 
         function updateStorage() {
-            localStorage.setItem('study_events', JSON.stringify(events));
+            localStorage.setItem('study_v5', JSON.stringify(events));
             calendar.removeAllEvents();
             calendar.addEventSource(events);
         }
 
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
-            document.getElementById('saveBtn').classList.remove('hidden');
         }
     </script>
 </body>
