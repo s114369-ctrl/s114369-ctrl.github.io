@@ -3,149 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的讀書調度器</title>
+    <title>互動月曆讀書計畫</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; }
+        .fc-event { cursor: pointer; }
+        #calendar { background: white; padding: 20px; border-radius: 12px; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+<body class="bg-gray-100 min-h-screen p-4">
 
-    <div class="max-w-4xl mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-3xl font-bold text-blue-600">📖 期末不掛科：讀書計畫調度器</h1>
-            <p class="text-gray-500 mt-2">輸入你的考試，讓 AI (網頁) 提醒你該讀書了</p>
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-indigo-700">📅 智能進度月曆</h1>
+            <button onclick="openModal('exam')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition">新增考試</button>
         </header>
 
-        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">考試名稱</label>
-                    <input type="text" id="examName" placeholder="例如：期末數學" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+        <div id="calendar"></div>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h2 id="modalTitle" class="text-xl font-bold mb-4">標題</h2>
+            <div id="modalBody" class="space-y-4">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">考試日期</label>
-                    <input type="date" id="examDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">考試範圍</label>
-                    <input type="text" id="examRange" placeholder="例如：Ch.1 ~ Ch.5" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
-                </div>
-                <div class="flex items-end">
-                    <button onclick="addExam()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                        新增計畫
-                    </button>
-                </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">取消</button>
+                <button id="saveBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">儲存</button>
             </div>
         </div>
-
-        <div id="examList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            </div>
     </div>
 
     <script>
-        let exams = JSON.parse(localStorage.getItem('myExams')) || [];
+        let events = JSON.parse(localStorage.getItem('study_events')) || [];
+        let calendar;
 
-        function addExam() {
-            const name = document.getElementById('examName').value;
-            const date = document.getElementById('examDate').value;
-            const range = document.getElementById('examRange').value;
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'zh-tw',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+                events: events,
+                // 點擊空白日期：新增讀書計畫
+                dateClick: function(info) {
+                    openModal('plan', info.dateStr);
+                },
+                // 點擊現有事件：查看詳情或標記完成
+                eventClick: function(info) {
+                    showEventDetail(info.event);
+                }
+            });
+            calendar.render();
+        });
 
-            if (!name || !date) {
-                alert('請填寫考試名稱和日期！');
-                return;
+        function openModal(type, dateStr = '') {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            const saveBtn = document.getElementById('saveBtn');
+            modal.classList.remove('hidden');
+
+            if (type === 'exam') {
+                title.innerText = "新增考試科目";
+                body.innerHTML = `
+                    <input type="text" id="name" placeholder="科目名稱 (如: 數學)" class="w-full p-2 border rounded">
+                    <input type="date" id="date" class="w-full p-2 border rounded">
+                    <textarea id="range" placeholder="考試範圍" class="w-full p-2 border rounded"></textarea>
+                `;
+                saveBtn.onclick = () => saveEvent('exam');
+            } else if (type === 'plan') {
+                title.innerText = `${dateStr} 讀書計畫`;
+                body.innerHTML = `
+                    <input type="text" id="name" placeholder="預定讀什麼？(如: 複習數學Ch1)" class="w-full p-2 border rounded">
+                    <input type="number" id="hours" placeholder="預定時數" class="w-full p-2 border rounded">
+                    <input type="hidden" id="date" value="${dateStr}">
+                    <p class="text-xs text-gray-400">提示：如果名稱包含科目，完成後對應考試會變綠色</p>
+                `;
+                saveBtn.onclick = () => saveEvent('plan');
             }
+        }
 
-            const newExam = {
-                id: Date.now(),
-                name: name,
-                date: date,
-                range: range,
-                isDone: false
+        function saveEvent(type) {
+            const name = document.getElementById('name').value;
+            const date = document.getElementById('date').value;
+            const rangeOrHours = document.getElementById('range')?.value || document.getElementById('hours')?.value;
+
+            if (!name || !date) return alert("請填寫必填欄位");
+
+            const newEvent = {
+                id: 'id-' + Date.now(),
+                title: (type === 'exam' ? '🚫 ' : '📖 ') + name,
+                start: date,
+                extendedProps: {
+                    type: type,
+                    range: rangeOrHours,
+                    originalName: name,
+                    isDone: false
+                },
+                color: type === 'exam' ? '#ef4444' : '#3b82f6' // 考試紅色，計畫藍色
             };
 
-            exams.push(newExam);
-            saveAndRender();
-            
-            // 清空輸入框
-            document.getElementById('examName').value = '';
-            document.getElementById('examDate').value = '';
-            document.getElementById('examRange').value = '';
+            events.push(newEvent);
+            updateStorage();
+            closeModal();
         }
 
-        function deleteExam(id) {
-            exams = exams.filter(exam => exam.id !== id);
-            saveAndRender();
+        function showEventDetail(event) {
+            const props = event.extendedProps;
+            const modal = document.getElementById('modal');
+            document.getElementById('modalTitle').innerText = event.title;
+            document.getElementById('modalBody').innerHTML = `
+                <p><strong>類型：</strong>${props.type === 'exam' ? '考試' : '讀書計畫'}</p>
+                <p><strong>內容：</strong>${props.range}</p>
+                <p><strong>狀態：</strong>${props.isDone ? '✅ 已完成' : '❌ 未完成'}</p>
+                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-4 bg-green-500 text-white py-2 rounded">標記為已讀完</button>` : ''}
+                <button onclick="deleteEvent('${event.id}')" class="w-full mt-2 bg-gray-200 text-gray-700 py-2 rounded">刪除</button>
+            `;
+            document.getElementById('saveBtn').classList.add('hidden');
+            modal.classList.remove('hidden');
         }
 
-        function toggleDone(id) {
-            const exam = exams.find(e => e.id === id);
-            exam.isDone = !exam.isDone;
-            saveAndRender();
+        function markAsDone(id) {
+            const eventIndex = events.findIndex(e => e.id === id);
+            if (eventIndex > -1) {
+                events[eventIndex].extendedProps.isDone = true;
+                events[eventIndex].color = '#10b981'; // 變成綠色
+                
+                // 聯動邏輯：如果讀的是某科目，把該科目的「考試」也變綠色
+                const subject = events[eventIndex].extendedProps.originalName;
+                events.forEach(e => {
+                    if (e.extendedProps.type === 'exam' && e.extendedProps.originalName.includes(subject)) {
+                        e.extendedProps.isDone = true;
+                        e.color = '#10b981';
+                    }
+                });
+            }
+            updateStorage();
+            closeModal();
         }
 
-        function saveAndRender() {
-            localStorage.setItem('myExams', JSON.stringify(exams));
-            renderExams();
+        function deleteEvent(id) {
+            events = events.filter(e => e.id !== id);
+            updateStorage();
+            closeModal();
         }
 
-        function renderExams() {
-            const listElement = document.getElementById('examList');
-            listElement.innerHTML = '';
-
-            // 依照日期排序
-            exams.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            exams.forEach(exam => {
-                const today = new Date();
-                const targetDate = new Date(exam.date);
-                const diffTime = targetDate - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                let statusColor = "bg-green-100 border-green-500 text-green-700";
-                let statusText = `剩餘 ${diffDays} 天`;
-
-                if (exam.isDone) {
-                    statusColor = "bg-gray-100 border-gray-400 text-gray-500 grayscale";
-                    statusText = "✅ 已讀完";
-                } else if (diffDays < 0) {
-                    statusColor = "bg-black border-red-600 text-white";
-                    statusText = "💀 已結束";
-                } else if (diffDays <= 3) {
-                    statusColor = "bg-red-100 border-red-500 text-red-700 animate-pulse";
-                    statusText = `🔥 急迫！剩 ${diffDays} 天`;
-                } else if (diffDays <= 7) {
-                    statusColor = "bg-yellow-100 border-yellow-500 text-yellow-700";
-                    statusText = `⏳ 倒數 ${diffDays} 天`;
-                }
-
-                const card = `
-                    <div class="border-l-8 p-5 rounded-lg shadow-sm bg-white ${statusColor} transition-all">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="text-xl font-bold">${exam.name}</h3>
-                                <p class="text-sm opacity-80">範圍：${exam.range || '未填寫'}</p>
-                                <p class="text-sm font-semibold mt-1">日期：${exam.date}</p>
-                            </div>
-                            <span class="text-xs font-bold px-2 py-1 rounded bg-white bg-opacity-50">${statusText}</span>
-                        </div>
-                        <div class="mt-4 flex gap-2">
-                            <button onclick="toggleDone(${exam.id})" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50 text-gray-700">
-                                ${exam.isDone ? '取消勾選' : '標記已讀完'}
-                            </button>
-                            <button onclick="deleteExam(${exam.id})" class="text-xs bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-100">
-                                刪除
-                            </button>
-                        </div>
-                    </div>
-                `;
-                listElement.innerHTML += card;
-            });
+        function updateStorage() {
+            localStorage.setItem('study_events', JSON.stringify(events));
+            calendar.removeAllEvents();
+            calendar.addEventSource(events);
         }
 
-        // 初始化渲染
-        renderExams();
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('saveBtn').classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
