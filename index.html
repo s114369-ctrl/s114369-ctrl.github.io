@@ -1,11 +1,151 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset = "utf-8">
-    <title>my web</title>
-    <link rel="icon" href="icon.png">
-  </head>
-  <body>
-      hello world
-  </body>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的讀書調度器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl font-bold text-blue-600">📖 期末不掛科：讀書計畫調度器</h1>
+            <p class="text-gray-500 mt-2">輸入你的考試，讓 AI (網頁) 提醒你該讀書了</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">考試名稱</label>
+                    <input type="text" id="examName" placeholder="例如：期末數學" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">考試日期</label>
+                    <input type="date" id="examDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">考試範圍</label>
+                    <input type="text" id="examRange" placeholder="例如：Ch.1 ~ Ch.5" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="addExam()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                        新增計畫
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="examList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            </div>
+    </div>
+
+    <script>
+        let exams = JSON.parse(localStorage.getItem('myExams')) || [];
+
+        function addExam() {
+            const name = document.getElementById('examName').value;
+            const date = document.getElementById('examDate').value;
+            const range = document.getElementById('examRange').value;
+
+            if (!name || !date) {
+                alert('請填寫考試名稱和日期！');
+                return;
+            }
+
+            const newExam = {
+                id: Date.now(),
+                name: name,
+                date: date,
+                range: range,
+                isDone: false
+            };
+
+            exams.push(newExam);
+            saveAndRender();
+            
+            // 清空輸入框
+            document.getElementById('examName').value = '';
+            document.getElementById('examDate').value = '';
+            document.getElementById('examRange').value = '';
+        }
+
+        function deleteExam(id) {
+            exams = exams.filter(exam => exam.id !== id);
+            saveAndRender();
+        }
+
+        function toggleDone(id) {
+            const exam = exams.find(e => e.id === id);
+            exam.isDone = !exam.isDone;
+            saveAndRender();
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('myExams', JSON.stringify(exams));
+            renderExams();
+        }
+
+        function renderExams() {
+            const listElement = document.getElementById('examList');
+            listElement.innerHTML = '';
+
+            // 依照日期排序
+            exams.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            exams.forEach(exam => {
+                const today = new Date();
+                const targetDate = new Date(exam.date);
+                const diffTime = targetDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                let statusColor = "bg-green-100 border-green-500 text-green-700";
+                let statusText = `剩餘 ${diffDays} 天`;
+
+                if (exam.isDone) {
+                    statusColor = "bg-gray-100 border-gray-400 text-gray-500 grayscale";
+                    statusText = "✅ 已讀完";
+                } else if (diffDays < 0) {
+                    statusColor = "bg-black border-red-600 text-white";
+                    statusText = "💀 已結束";
+                } else if (diffDays <= 3) {
+                    statusColor = "bg-red-100 border-red-500 text-red-700 animate-pulse";
+                    statusText = `🔥 急迫！剩 ${diffDays} 天`;
+                } else if (diffDays <= 7) {
+                    statusColor = "bg-yellow-100 border-yellow-500 text-yellow-700";
+                    statusText = `⏳ 倒數 ${diffDays} 天`;
+                }
+
+                const card = `
+                    <div class="border-l-8 p-5 rounded-lg shadow-sm bg-white ${statusColor} transition-all">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-xl font-bold">${exam.name}</h3>
+                                <p class="text-sm opacity-80">範圍：${exam.range || '未填寫'}</p>
+                                <p class="text-sm font-semibold mt-1">日期：${exam.date}</p>
+                            </div>
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-white bg-opacity-50">${statusText}</span>
+                        </div>
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="toggleDone(${exam.id})" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50 text-gray-700">
+                                ${exam.isDone ? '取消勾選' : '標記已讀完'}
+                            </button>
+                            <button onclick="deleteExam(${exam.id})" class="text-xs bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-100">
+                                刪除
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listElement.innerHTML += card;
+            });
+        }
+
+        // 初始化渲染
+        renderExams();
+    </script>
+</body>
 </html>
