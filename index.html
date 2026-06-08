@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能代辦調度系統</title>
+    <title>智能代辦調度系統 - 快捷操作版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
@@ -20,7 +20,7 @@
     <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm">
         <div>
             <h1 class="text-2xl font-bold text-slate-800">📅 智能學習代辦調度系統</h1>
-            <p class="text-xs text-slate-500">左側追蹤緊急度，右側掌控全局行事曆</p>
+            <p class="text-xs text-slate-500">點擊日曆或按鈕皆可新增！完成後項目會自動從畫面消掉。</p>
         </div>
         <button onclick="openModal('todo')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow transition transform active:scale-95 text-sm">
             ➕ 新增代辦事項
@@ -29,9 +29,9 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
         
-        <div class="bg-white p-4 rounded-1xl shadow-sm flex flex-col h-[calc(100vh-140px)]">
+        <div class="bg-white p-4 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-140px)]">
             <h2 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2 border-b pb-2">
-                ⏳ 待辦緊急度排序
+                ⏳ 未完成緊急度排序
             </h2>
             <div id="todoSidebarList" class="space-y-3 overflow-y-auto flex-1 pr-1">
                 </div>
@@ -54,7 +54,7 @@
     </div>
 
     <script>
-        let events = JSON.parse(localStorage.getItem('study_v6')) || [];
+        let events = JSON.parse(localStorage.getItem('study_v7')) || [];
         let calendar;
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -63,13 +63,17 @@
                 initialView: 'dayGridMonth',
                 locale: 'zh-tw',
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
-                events: events,
+                // 這裡做篩選：只把「未完成」的事件傳給行事曆顯示
+                events: function(info, successCallback, failureCallback) {
+                    const activeEvents = events.filter(e => !e.extendedProps.isDone);
+                    successCallback(activeEvents);
+                },
                 displayEventTime: false,
-                dateClick: (info) => openModal('todo', info.dateStr),
+                dateClick: (info) => openModal('todo', info.dateStr), // 點擊行事曆空白處一樣可以輸入預定做的事
                 eventClick: (info) => showEventDetail(info.event)
             });
             calendar.render();
-            renderSidebar(); // 初始化左側清單
+            renderSidebar(); 
         });
 
         function openModal(type, dateStr = '') {
@@ -99,7 +103,7 @@
 
                 <div class="space-y-1">
                     <label class="text-xs font-bold text-slate-600 block">項目名稱 (必填)</label>
-                    <input type="text" id="todoName" placeholder="例如：微積分期末考、交報告、運動" class="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="todoName" placeholder="例如：寫數學講義、開會、買晚餐" class="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-indigo-500">
                 </div>
 
                 <div class="space-y-1">
@@ -122,10 +126,9 @@
             let startStr = date || null;
             let timeLabel = "";
 
-            // 如果有填日期，才去判斷時間邏輯
             if (date && hour !== "") {
                 hour = String(hour).padStart(2, '0');
-                min = min !== "" ? String(min).padStart(2, '0') : "00"; // 沒填分就是整點
+                min = min !== "" ? String(min).padStart(2, '0') : "00"; 
                 startStr = `${date}T${hour}:${min}:00`;
                 timeLabel = ` [${hour}:${min}]`;
             }
@@ -133,9 +136,9 @@
             const newEvent = {
                 id: 'id-' + Date.now(),
                 title: name + timeLabel,
-                start: startStr || new Date().toISOString().split('T')[0], // 沒填日期預設今天
+                start: startStr || new Date().toISOString().split('T')[0], 
                 allDay: (hour === ""),
-                color: '#6366f1', // 預設藍紫色
+                color: '#6366f1', 
                 extendedProps: {
                     originalName: name,
                     memo: memo || "無",
@@ -155,43 +158,39 @@
             const sidebar = document.getElementById('todoSidebarList');
             sidebar.innerHTML = "";
 
-            if (events.length === 0) {
-                sidebar.innerHTML = `<p class="text-center text-sm text-slate-400 mt-10">目前沒有代辦事項</p>`;
+            // 這裡也只篩選出「未完成」的項目顯示在左側列表
+            const activeEvents = events.filter(e => !e.extendedProps.isDone);
+
+            if (activeEvents.length === 0) {
+                sidebar.innerHTML = `<p class="text-center text-sm text-slate-400 mt-10">🎉 太棒了！目前沒有待辦事項</p>`;
                 return;
             }
 
-            // 計算緊急度並排序
             const today = new Date().setHours(0,0,0,0);
             
-            const sortedEvents = events.map(e => {
+            const sortedEvents = activeEvents.map(e => {
                 const targetDate = new Date(e.extendedProps.rawDate).setHours(0,0,0,0);
                 const diffTime = targetDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                // 決定優先級權重 (越小排越前面)
-                let priority = 3; // 正常
-                if (e.extendedProps.isDone) priority = 5; // 已完成沉底
-                else if (diffDays < 0) priority = 4; // 已過期
-                else if (diffDays <= 3) priority = 1; // ⚠️ 極緊急
-                else if (diffDays <= 7) priority = 2; // ⏳ 中度緊急
+                let priority = 3; 
+                if (diffDays < 0) priority = 4; 
+                else if (diffDays <= 3) priority = 1; 
+                else if (diffDays <= 7) priority = 2; 
 
                 return { ...e, diffDays, priority };
             }).sort((a, b) => a.priority - b.priority || a.diffDays - b.diffDays);
 
-            // 渲染畫面
             sortedEvents.forEach(e => {
                 let badgeColor = "bg-slate-100 text-slate-600";
                 let badgeText = "無期限";
                 let pulseClass = "";
 
-                if (e.extendedProps.isDone) {
-                    badgeColor = "bg-emerald-100 text-emerald-700 line-through opacity-60";
-                    badgeText = "已完成";
-                } else if (e.diffDays < 0) {
+                if (e.diffDays < 0) {
                     badgeColor = "bg-slate-800 text-white";
                     badgeText = "已過期";
                 } else if (e.diffDays <= 3) {
-                    badgeColor = "bg-rose-100 text-rose-700 font-bold border border-rose-300";
+                    badgeColor = "bg-rose-100 text-rose-700 font-bold border border-rose-200";
                     badgeText = `🔥 剩 ${e.diffDays} 天`;
                     pulseClass = "animate-pulse";
                 } else if (e.diffDays <= 7) {
@@ -205,20 +204,32 @@
                 const timeInfo = e.extendedProps.hour ? `${e.extendedProps.hour}:${e.extendedProps.min || '00'}` : "全天";
 
                 const card = document.createElement('div');
-                card.className = `p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition cursor-pointer shadow-sm relative overflow-hidden group ${pulseClass}`;
-                card.onclick = () => {
-                    const fcEvent = calendar.getEventById(e.id);
-                    if (fcEvent) showEventDetail(fcEvent);
-                };
+                card.className = `p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition shadow-sm relative group flex flex-col justify-between ${pulseClass}`;
+                
+                // 點擊卡片空白處可以看詳情
+                card.addEventListener('click', (el) => {
+                    if (el.target.tagName !== 'BUTTON') {
+                        const fcEvent = calendar.getEventById(e.id);
+                        if (fcEvent) showEventDetail(fcEvent);
+                    }
+                });
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-start gap-2">
+                    <div class="flex justify-between items-start gap-2 mb-2">
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-sm text-slate-800 truncate ${e.extendedProps.isDone ? 'line-through text-slate-400':''}">${e.extendedProps.originalName}</h3>
+                            <h3 class="font-bold text-sm text-slate-800 truncate">${e.extendedProps.originalName}</h3>
                             <p class="text-[11px] text-slate-400 mt-0.5">📅 ${e.extendedProps.rawDate} (${timeInfo})</p>
                             <p class="text-[11px] text-slate-500 mt-1 truncate italic">📝 備註: ${e.extendedProps.memo}</p>
                         </div>
                         <span class="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${badgeColor}">${badgeText}</span>
+                    </div>
+                    <div class="flex justify-end gap-2 border-t pt-2 mt-1">
+                        <button onclick="markAsDone('${e.id}')" class="text-[11px] bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded font-medium shadow-sm transition">
+                            ✓ 完成
+                        </button>
+                        <button onclick="deleteEvent('${e.id}')" class="text-[11px] bg-slate-200 hover:bg-rose-500 hover:text-white text-slate-600 px-2 py-1 rounded font-medium transition">
+                            🗑 刪除
+                        </button>
                     </div>
                 `;
                 sidebar.appendChild(card);
@@ -234,9 +245,8 @@
                     <p class="text-base font-bold text-indigo-900 border-b pb-1">${props.originalName}</p>
                     <p class="text-slate-600"><strong>時間：</strong> ${props.rawDate} ${props.hour ? `[${props.hour}:${props.min || '00'}]` : '(全天)'}</p>
                     <p class="text-slate-600"><strong>備註：</strong> ${props.memo}</p>
-                    <p class="text-slate-600"><strong>狀態：</strong> ${props.isDone ? '✅ 已完成' : '⏳ 進行中'}</p>
                 </div>
-                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-4 bg-emerald-500 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-600 transition shadow">標記為完成</button>` : ''}
+                <button onclick="markAsDone('${event.id}')" class="w-full mt-4 bg-emerald-500 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-600 transition shadow">標記為完成</button>
                 <button onclick="deleteEvent('${event.id}')" class="w-full mt-2 text-rose-500 text-xs hover:underline text-center">刪除此代辦</button>
             `;
             document.getElementById('saveBtn').classList.add('hidden');
@@ -247,7 +257,6 @@
             const idx = events.findIndex(e => e.id === id);
             if (idx > -1) {
                 events[idx].extendedProps.isDone = true;
-                events[idx].color = '#10b981'; // 月曆變綠色
             }
             updateStorage();
             closeModal();
@@ -260,9 +269,8 @@
         }
 
         function updateStorage() {
-            localStorage.setItem('study_v6', JSON.stringify(events));
-            calendar.removeAllEvents();
-            calendar.addEventSource(events);
+            localStorage.setItem('study_v7', JSON.stringify(events));
+            calendar.refetchEvents(); // 重新整理行事曆（會自動隱藏已完成）
             renderSidebar(); // 重新整理左欄
         }
 
