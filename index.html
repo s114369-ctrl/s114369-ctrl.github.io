@@ -1,51 +1,60 @@
-
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能讀書調度器 - 時段加強版</title>
+    <title>智能代辦調度系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
-        .fc-event { cursor: pointer; border: none !important; padding: 3px 6px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; transition: transform 0.1s; }
-        .fc-event:hover { transform: scale(1.02); }
-        #calendar { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .fc-toolbar-title { font-size: 1.25rem !important; font-weight: bold; color: #1e293b; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
+        .fc-event { cursor: pointer; border: none !important; padding: 4px 6px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; }
+        #calendar { background: white; padding: 16px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); height: 100%; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-6 min-h-screen flex flex-col">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-indigo-900">📅 智能讀書調度系統</h1>
-                <p class="text-slate-500">快速選擇時段，精確掌握進度</p>
-            </div>
-            <button onclick="openModal('exam')" class="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg transition transform active:scale-95">
-                🚩 新增考試項目
-            </button>
-        </header>
+    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">📅 智能學習代辦調度系統</h1>
+            <p class="text-xs text-slate-500">左側追蹤緊急度，右側掌控全局行事曆</p>
+        </div>
+        <button onclick="openModal('todo')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow transition transform active:scale-95 text-sm">
+            ➕ 新增代辦事項
+        </button>
+    </header>
 
-        <div id="calendar"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        
+        <div class="bg-white p-4 rounded-1xl shadow-sm flex flex-col h-[calc(100vh-140px)]">
+            <h2 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2 border-b pb-2">
+                ⏳ 待辦緊急度排序
+            </h2>
+            <div id="todoSidebarList" class="space-y-3 overflow-y-auto flex-1 pr-1">
+                </div>
+        </div>
+
+        <div class="lg:col-span-2">
+            <div id="calendar"></div>
+        </div>
     </div>
 
     <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl transition-all">
-            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-slate-800"></h2>
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h2 id="modalTitle" class="text-xl font-bold mb-4 text-slate-800"></h2>
             <div id="modalBody" class="space-y-4"></div>
-            <div class="mt-8 flex justify-end gap-3">
-                <button onclick="closeModal()" class="px-5 py-2 text-slate-400 hover:text-slate-600 font-medium">取消</button>
-                <button id="saveBtn" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md transition">儲存計畫</button>
+            <div class="mt-6 flex justify-end gap-3 border-t pt-4">
+                <button onclick="closeModal()" class="px-4 py-2 text-slate-400 hover:text-slate-600 text-sm font-medium">取消</button>
+                <button id="saveBtn" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md">儲存</button>
             </div>
         </div>
     </div>
 
     <script>
-        let events = JSON.parse(localStorage.getItem('study_v5')) || [];
+        let events = JSON.parse(localStorage.getItem('study_v6')) || [];
         let calendar;
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -55,11 +64,12 @@
                 locale: 'zh-tw',
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
                 events: events,
-                displayEventTime: false, // 關閉預設時間顯示，我們自訂在標題裡比較美
-                dateClick: (info) => openModal('plan', info.dateStr),
+                displayEventTime: false,
+                dateClick: (info) => openModal('todo', info.dateStr),
                 eventClick: (info) => showEventDetail(info.event)
             });
             calendar.render();
+            renderSidebar(); // 初始化左側清單
         });
 
         function openModal(type, dateStr = '') {
@@ -70,99 +80,70 @@
             modal.classList.remove('hidden');
             saveBtn.classList.remove('hidden');
 
-            if (type === 'exam') {
-                title.innerText = "🚩 新增考試";
-                body.innerHTML = `
-                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600">考試科目</label>
-                    <input type="text" id="name" placeholder="例如：微積分" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-rose-500"></div>
-                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600">考試日期</label>
-                    <input type="date" id="date" class="w-full p-2.5 border rounded-lg"></div>
-                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600">考試範圍</label>
-                    <textarea id="range" placeholder="例如：Chapter 1 - 4" class="w-full p-2.5 border rounded-lg h-24"></textarea></div>
-                `;
-                saveBtn.onclick = () => saveEvent('exam');
-            } else if (type === 'plan') {
-                const subjects = [...new Set(events.filter(e => e.extendedProps.type === 'exam').map(e => e.extendedProps.originalName))];
-                let options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
-                
-                title.innerText = `📝 安排計畫 (${dateStr})`;
-                body.innerHTML = `
-                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600 text-xs">選擇科目或活動</label>
-                    <select id="subjectSelect" onchange="toggleOtherInput(this.value)" class="w-full p-2.5 border rounded-lg bg-slate-50">
-                        <option value="">-- 請選擇 --</option>
-                        ${options}
-                        <option value="other">🎨 其他活動</option>
-                    </select></div>
-                    <div id="otherInputArea" class="hidden space-y-1">
-                        <input type="text" id="otherName" placeholder="活動名稱 (如：運動、休息)" class="w-full p-2.5 border rounded-lg border-indigo-300">
+            title.innerText = "➕ 新增代辦事項";
+            body.innerHTML = `
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
+                    <label class="text-xs font-bold text-slate-600 block">時間設定 (選填)</label>
+                    <input type="date" id="todoDate" value="${dateStr}" class="w-full p-2 text-sm border rounded bg-white">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="todoHour" min="0" max="23" placeholder="時 (0-23)" class="w-full p-2 text-sm border rounded bg-white">
+                            <span class="text-xs text-slate-400">點</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="todoMin" min="0" max="59" placeholder="分 (預設00)" class="w-full p-2 text-sm border rounded bg-white">
+                            <span class="text-xs text-slate-400">分</span>
+                        </div>
                     </div>
-                    
-                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600 text-xs">時段快選 (選填)</label>
-                    <select id="periodSelect" onchange="applyPeriod(this.value)" class="w-full p-2.5 border rounded-lg bg-indigo-50 text-indigo-700 font-medium">
-                        <option value="">自訂 / 全天</option>
-                        <option value="早上">早上 (08:00~)</option>
-                        <option value="中午">中午 (12:00~)</option>
-                        <option value="晚上">晚上 (19:00~)</option>
-                    </select></div>
+                </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1"><label class="text-sm text-slate-400 text-xs">開始時間</label>
-                        <input type="time" id="startTime" class="w-full p-2.5 border rounded-lg text-sm"></div>
-                        <div class="space-y-1"><label class="text-sm text-slate-400 text-xs">結束時間</label>
-                        <input type="time" id="endTime" class="w-full p-2.5 border rounded-lg text-sm"></div>
-                    </div>
-                    
-                    <div class="space-y-1"><label class="text-sm font-semibold text-slate-600 text-xs">詳細範圍/備註</label>
-                    <input type="text" id="planRange" placeholder="今天要完成什麼？" class="w-full p-2.5 border rounded-lg"></div>
-                    <input type="hidden" id="date" value="${dateStr}">
-                `;
-                saveBtn.onclick = () => saveEvent('plan');
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600 block">項目名稱 (必填)</label>
+                    <input type="text" id="todoName" placeholder="例如：微積分期末考、交報告、運動" class="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600 block">備註說明 (選填)</label>
+                    <textarea id="todoMemo" placeholder="補充說明..." class="w-full p-2 text-sm border rounded h-20"></textarea>
+                </div>
+            `;
+            saveBtn.onclick = () => saveTodo();
+        }
+
+        function saveTodo() {
+            const name = document.getElementById('todoName').value;
+            const date = document.getElementById('todoDate').value;
+            let hour = document.getElementById('todoHour').value;
+            let min = document.getElementById('todoMin').value;
+            const memo = document.getElementById('todoMemo').value;
+
+            if (!name) return alert("請輸入項目名稱！");
+
+            let startStr = date || null;
+            let timeLabel = "";
+
+            // 如果有填日期，才去判斷時間邏輯
+            if (date && hour !== "") {
+                hour = String(hour).padStart(2, '0');
+                min = min !== "" ? String(min).padStart(2, '0') : "00"; // 沒填分就是整點
+                startStr = `${date}T${hour}:${min}:00`;
+                timeLabel = ` [${hour}:${min}]`;
             }
-        }
-
-        function applyPeriod(val) {
-            const start = document.getElementById('startTime');
-            const end = document.getElementById('endTime');
-            if (val === '早上') { start.value = "08:00"; end.value = "10:00"; }
-            else if (val === '中午') { start.value = "12:00"; end.value = "14:00"; }
-            else if (val === '晚上') { start.value = "19:00"; end.value = "21:00"; }
-            else { start.value = ""; end.value = ""; }
-        }
-
-        function toggleOtherInput(val) {
-            document.getElementById('otherInputArea').classList.toggle('hidden', val !== 'other');
-        }
-
-        function saveEvent(type) {
-            const date = document.getElementById('date').value;
-            let name, range, color, startTime, endTime, periodLabel = "";
-
-            if (type === 'exam') {
-                name = document.getElementById('name').value;
-                range = document.getElementById('range').value;
-                color = '#f43f5e';
-            } else {
-                const sel = document.getElementById('subjectSelect').value;
-                name = (sel === 'other') ? document.getElementById('otherName').value : sel;
-                range = document.getElementById('planRange').value;
-                startTime = document.getElementById('startTime').value;
-                endTime = document.getElementById('endTime').value;
-                periodLabel = document.getElementById('periodSelect').value;
-                color = (sel === 'other') ? '#94a3b8' : '#6366f1';
-            }
-
-            if (!name || !date) return alert("請填寫科目或活動名稱");
-
-            const timeTitle = periodLabel ? `(${periodLabel}) ` : (startTime ? `[${startTime}] ` : '');
 
             const newEvent = {
                 id: 'id-' + Date.now(),
-                title: (type === 'exam' ? '🚩 ' : '● ') + timeTitle + name,
-                start: (type === 'plan' && startTime) ? `${date}T${startTime}` : date,
-                end: (type === 'plan' && endTime) ? `${date}T${endTime}` : date,
-                allDay: (type === 'exam' || !startTime),
-                color: color,
-                extendedProps: { type, range, originalName: name, isDone: false, startTime, endTime, periodLabel }
+                title: name + timeLabel,
+                start: startStr || new Date().toISOString().split('T')[0], // 沒填日期預設今天
+                allDay: (hour === ""),
+                color: '#6366f1', // 預設藍紫色
+                extendedProps: {
+                    originalName: name,
+                    memo: memo || "無",
+                    isDone: false,
+                    rawDate: date || new Date().toISOString().split('T')[0],
+                    hour: hour,
+                    min: min
+                }
             };
 
             events.push(newEvent);
@@ -170,23 +151,93 @@
             closeModal();
         }
 
+        function renderSidebar() {
+            const sidebar = document.getElementById('todoSidebarList');
+            sidebar.innerHTML = "";
+
+            if (events.length === 0) {
+                sidebar.innerHTML = `<p class="text-center text-sm text-slate-400 mt-10">目前沒有代辦事項</p>`;
+                return;
+            }
+
+            // 計算緊急度並排序
+            const today = new Date().setHours(0,0,0,0);
+            
+            const sortedEvents = events.map(e => {
+                const targetDate = new Date(e.extendedProps.rawDate).setHours(0,0,0,0);
+                const diffTime = targetDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                // 決定優先級權重 (越小排越前面)
+                let priority = 3; // 正常
+                if (e.extendedProps.isDone) priority = 5; // 已完成沉底
+                else if (diffDays < 0) priority = 4; // 已過期
+                else if (diffDays <= 3) priority = 1; // ⚠️ 極緊急
+                else if (diffDays <= 7) priority = 2; // ⏳ 中度緊急
+
+                return { ...e, diffDays, priority };
+            }).sort((a, b) => a.priority - b.priority || a.diffDays - b.diffDays);
+
+            // 渲染畫面
+            sortedEvents.forEach(e => {
+                let badgeColor = "bg-slate-100 text-slate-600";
+                let badgeText = "無期限";
+                let pulseClass = "";
+
+                if (e.extendedProps.isDone) {
+                    badgeColor = "bg-emerald-100 text-emerald-700 line-through opacity-60";
+                    badgeText = "已完成";
+                } else if (e.diffDays < 0) {
+                    badgeColor = "bg-slate-800 text-white";
+                    badgeText = "已過期";
+                } else if (e.diffDays <= 3) {
+                    badgeColor = "bg-rose-100 text-rose-700 font-bold border border-rose-300";
+                    badgeText = `🔥 剩 ${e.diffDays} 天`;
+                    pulseClass = "animate-pulse";
+                } else if (e.diffDays <= 7) {
+                    badgeColor = "bg-amber-100 text-amber-700 font-bold";
+                    badgeText = `⏳ 倒數 ${e.diffDays} 天`;
+                } else {
+                    badgeColor = "bg-blue-100 text-blue-700";
+                    badgeText = `還有 ${e.diffDays} 天`;
+                }
+
+                const timeInfo = e.extendedProps.hour ? `${e.extendedProps.hour}:${e.extendedProps.min || '00'}` : "全天";
+
+                const card = document.createElement('div');
+                card.className = `p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 transition cursor-pointer shadow-sm relative overflow-hidden group ${pulseClass}`;
+                card.onclick = () => {
+                    const fcEvent = calendar.getEventById(e.id);
+                    if (fcEvent) showEventDetail(fcEvent);
+                };
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-sm text-slate-800 truncate ${e.extendedProps.isDone ? 'line-through text-slate-400':''}">${e.extendedProps.originalName}</h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">📅 ${e.extendedProps.rawDate} (${timeInfo})</p>
+                            <p class="text-[11px] text-slate-500 mt-1 truncate italic">📝 備註: ${e.extendedProps.memo}</p>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${badgeColor}">${badgeText}</span>
+                    </div>
+                `;
+                sidebar.appendChild(card);
+            });
+        }
+
         function showEventDetail(event) {
             const props = event.extendedProps;
             const modal = document.getElementById('modal');
-            document.getElementById('modalTitle').innerText = event.title;
+            document.getElementById('modalTitle').innerText = "🔍 代辦詳情";
             document.getElementById('modalBody').innerHTML = `
-                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="px-2 py-1 rounded-md text-xs font-bold ${props.type === 'exam' ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}">
-                            ${props.type === 'exam' ? '🚨 考試' : '📅 計畫'}
-                        </span>
-                        <span class="text-xs text-slate-400">${props.isDone ? '✅ 已完成' : '⏳ 進行中'}</span>
-                    </div>
-                    <p class="text-slate-700"><strong>時段：</strong> ${props.periodLabel || (props.startTime ? props.startTime + ' ~ ' + props.endTime : '全天')}</p>
-                    <p class="text-slate-700"><strong>內容：</strong> ${props.range || '無'}</p>
+                <div class="bg-slate-50 p-4 rounded-xl space-y-3 border text-sm">
+                    <p class="text-base font-bold text-indigo-900 border-b pb-1">${props.originalName}</p>
+                    <p class="text-slate-600"><strong>時間：</strong> ${props.rawDate} ${props.hour ? `[${props.hour}:${props.min || '00'}]` : '(全天)'}</p>
+                    <p class="text-slate-600"><strong>備註：</strong> ${props.memo}</p>
+                    <p class="text-slate-600"><strong>狀態：</strong> ${props.isDone ? '✅ 已完成' : '⏳ 進行中'}</p>
                 </div>
-                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-6 bg-emerald-500 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition">標記為讀完</button>` : ''}
-                <button onclick="deleteEvent('${event.id}')" class="w-full mt-3 text-slate-400 text-xs hover:text-rose-500 hover:underline transition">刪除此項目</button>
+                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-4 bg-emerald-500 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-600 transition shadow">標記為完成</button>` : ''}
+                <button onclick="deleteEvent('${event.id}')" class="w-full mt-2 text-rose-500 text-xs hover:underline text-center">刪除此代辦</button>
             `;
             document.getElementById('saveBtn').classList.add('hidden');
             modal.classList.remove('hidden');
@@ -196,17 +247,7 @@
             const idx = events.findIndex(e => e.id === id);
             if (idx > -1) {
                 events[idx].extendedProps.isDone = true;
-                events[idx].color = '#10b981';
-                
-                const sub = events[idx].extendedProps.originalName;
-                if (events[idx].extendedProps.type === 'plan') {
-                    events.forEach(e => {
-                        if (e.extendedProps.type === 'exam' && e.extendedProps.originalName === sub) {
-                            e.extendedProps.isDone = true;
-                            e.color = '#10b981';
-                        }
-                    });
-                }
+                events[idx].color = '#10b981'; // 月曆變綠色
             }
             updateStorage();
             closeModal();
@@ -219,9 +260,10 @@
         }
 
         function updateStorage() {
-            localStorage.setItem('study_v5', JSON.stringify(events));
+            localStorage.setItem('study_v6', JSON.stringify(events));
             calendar.removeAllEvents();
             calendar.addEventSource(events);
+            renderSidebar(); // 重新整理左欄
         }
 
         function closeModal() {
