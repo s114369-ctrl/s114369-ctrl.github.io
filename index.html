@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>還不讀書啊</title>
+    <title>智能學習雙軌調度系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
@@ -19,8 +19,8 @@
 
     <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">📅 還不讀書啊</h1>
-            <p class="text-xs text-slate-500">點擊日曆可自由選擇新增「代辦（完成後消除）」或「預定行程（完成後變綠）」！</p>
+            <h1 class="text-2xl font-bold text-slate-800">📅 智能學習雙軌調度系統</h1>
+            <p class="text-xs text-slate-500">點擊日曆可自由選擇新增「代辦」或「預定行程」！</p>
         </div>
         <button onclick="openModal('', 'todo')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow transition transform active:scale-95 text-sm">
             ➕ 新增項目
@@ -44,7 +44,7 @@
 
     <div id="modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div class="flex border-b mb-4">
+            <div id="modalTabs" class="flex border-b mb-4">
                 <button id="tabTodo" onclick="switchTab('todo')" class="flex-1 py-2 font-bold text-sm text-center border-b-2 border-indigo-600 text-indigo-600">⚠️ 代辦事項</button>
                 <button id="tabPlan" onclick="switchTab('plan')" class="flex-1 py-2 font-bold text-sm text-center text-slate-400 border-b-2 border-transparent">📝 預定行程</button>
             </div>
@@ -59,9 +59,9 @@
     </div>
 
     <script>
-        let events = JSON.parse(localStorage.getItem('study_v8')) || [];
+        let events = JSON.parse(localStorage.getItem('study_v9')) || [];
         let calendar;
-        let currentType = 'todo'; // 紀錄當前切換的視窗類型
+        let currentType = 'todo'; 
         let selectedDate = '';
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -70,8 +70,8 @@
                 initialView: 'dayGridMonth',
                 locale: 'zh-tw',
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
-                // 篩選：行事曆不顯示「已完成的代辦事項」，但會顯示「未完成代辦」和「所有預定行程」
                 events: function(info, successCallback, failureCallback) {
+                    // 篩選：行事曆不顯示已完成的 todo
                     const displayEvents = events.filter(e => {
                         if (e.extendedProps.type === 'todo' && e.extendedProps.isDone) return false;
                         return true;
@@ -79,14 +79,15 @@
                     successCallback(displayEvents);
                 },
                 displayEventTime: false,
-                dateClick: (info) => openModal(info.dateStr, 'todo'), // 點擊日曆預設開啟代辦
-                eventClick: (info) => showEventDetail(info.event)
+                dateClick: (info) => openModal(info.dateStr, 'todo'), 
+                eventClick: (info) => showEventDetail(info.event.id) // 改用 ID 去找，避開物件傳遞問題
             });
             calendar.render();
             renderSidebar(); 
         });
 
         function openModal(dateStr = '', type = 'todo') {
+            document.getElementById('modalTabs').classList.remove('hidden');
             const modal = document.getElementById('modal');
             const saveBtn = document.getElementById('saveBtn');
             modal.classList.remove('hidden');
@@ -104,7 +105,6 @@
             const tabPlan = document.getElementById('tabPlan');
             const body = document.getElementById('modalBody');
 
-            // 切換頁籤樣式
             if (type === 'todo') {
                 tabTodo.className = "flex-1 py-2 font-bold text-sm text-center border-b-2 border-indigo-600 text-indigo-600";
                 tabPlan.className = "flex-1 py-2 font-bold text-sm text-center text-slate-400 border-b-2 border-transparent";
@@ -113,7 +113,6 @@
                 tabTodo.className = "flex-1 py-2 font-bold text-sm text-center text-slate-400 border-b-2 border-transparent";
             }
 
-            // 動態渲染表單內容
             body.innerHTML = `
                 <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
                     <label class="text-xs font-bold text-slate-600 block">時間設定 (選填)</label>
@@ -163,14 +162,15 @@
                 timeLabel = ` [${hour}:${min}]`;
             }
 
+            const uniqueId = 'id-' + Date.now();
             const newEvent = {
-                id: 'id-' + Date.now(),
+                id: uniqueId,
                 title: (type === 'todo' ? '⚠️ ' : '🗓️ ') + name + timeLabel,
                 start: startStr || new Date().toISOString().split('T')[0], 
                 allDay: (hour === ""),
-                color: type === 'todo' ? '#6366f1' : '#0ea5e9', // 代辦紫色，預定藍色
+                color: type === 'todo' ? '#6366f1' : '#0ea5e9', 
                 extendedProps: {
-                    type: type, // 標記是 todo 還是 plan
+                    type: type, 
                     originalName: name,
                     memo: memo || "無",
                     isDone: false,
@@ -189,7 +189,6 @@
             const sidebar = document.getElementById('todoSidebarList');
             sidebar.innerHTML = "";
 
-            // 左側清單「只篩選出未完成的代辦事項 (todo)」
             const activeTodos = events.filter(e => e.extendedProps.type === 'todo' && !e.extendedProps.isDone);
 
             if (activeTodos.length === 0) {
@@ -235,17 +234,10 @@
                 const timeInfo = e.extendedProps.hour ? `${e.extendedProps.hour}:${e.extendedProps.min || '00'}` : "全天";
 
                 const card = document.createElement('div');
-                card.className = `p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition shadow-sm relative group flex flex-col justify-between ${pulseClass}`;
+                card.className = "p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition shadow-sm relative flex flex-col justify-between " + pulseClass;
                 
-                card.addEventListener('click', (el) => {
-                    if (el.target.tagName !== 'BUTTON') {
-                        const fcEvent = calendar.getEventById(e.id);
-                        if (fcEvent) showEventDetail(fcEvent);
-                    }
-                });
-
                 card.innerHTML = `
-                    <div class="flex justify-between items-start gap-2 mb-2">
+                    <div class="flex justify-between items-start gap-2 mb-2" onclick="showEventDetail('${e.id}')">
                         <div class="flex-1 min-w-0">
                             <h3 class="font-bold text-sm text-slate-800 truncate">${e.extendedProps.originalName}</h3>
                             <p class="text-[11px] text-slate-400 mt-0.5">📅 ${e.extendedProps.rawDate} (${timeInfo})</p>
@@ -253,11 +245,11 @@
                         </div>
                         <span class="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${badgeColor}">${badgeText}</span>
                     </div>
-                    <div class="flex justify-end gap-2 border-t pt-2 mt-1">
-                        <button onclick="markAsDone('${e.id}')" class="text-[11px] bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded font-medium shadow-sm transition">
+                    <div class="flex justify-end gap-2 border-t pt-2 mt-1 relative z-10">
+                        <button onclick="markAsDone('${e.id}'); event.stopPropagation();" class="text-[11px] bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded font-medium shadow-sm transition">
                             ✓ 完成
                         </button>
-                        <button onclick="deleteEvent('${e.id}')" class="text-[11px] bg-slate-200 hover:bg-rose-500 hover:text-white text-slate-600 px-2 py-1 rounded font-medium transition">
+                        <button onclick="deleteEvent('${e.id}'); event.stopPropagation();" class="text-[11px] bg-slate-200 hover:bg-rose-500 hover:text-white text-slate-600 px-2 py-1 rounded font-medium transition">
                             🗑 刪除
                         </button>
                     </div>
@@ -266,14 +258,15 @@
             });
         }
 
-        function showEventDetail(event) {
-            const props = event.extendedProps;
+        function showEventDetail(id) {
+            const item = events.find(e => e.id === id);
+            if (!item) return;
+
+            const props = item.extendedProps;
             const modal = document.getElementById('modal');
             document.getElementById('modalTitle').innerText = "🔍 項目詳情";
             
-            // 隱藏頁籤切換，只顯示內容
-            document.getElementById('tabTodo').className = "hidden";
-            document.getElementById('tabPlan').className = "hidden";
+            document.getElementById('modalTabs').classList.add('hidden');
 
             document.getElementById('modalBody').innerHTML = `
                 <div class="bg-slate-50 p-4 rounded-xl space-y-3 border text-sm">
@@ -285,8 +278,8 @@
                     <p class="text-slate-600"><strong>備註：</strong> ${props.memo}</p>
                     <p class="text-slate-600"><strong>狀態：</strong> ${props.isDone ? '✅ 已完成' : '⏳ 進行中'}</p>
                 </div>
-                ${!props.isDone ? `<button onclick="markAsDone('${event.id}')" class="w-full mt-4 bg-emerald-500 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-600 transition shadow">標記為完成</button>` : ''}
-                <button onclick="deleteEvent('${event.id}')" class="w-full mt-2 text-rose-500 text-xs hover:underline text-center">刪除此項目</button>
+                ${!props.isDone ? `<button onclick="markAsDone('${item.id}')" class="w-full mt-4 bg-emerald-500 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-600 transition shadow">標記為完成</button>` : ''}
+                <button onclick="deleteEvent('${item.id}')" class="w-full mt-2 text-rose-500 text-xs hover:underline text-center">刪除此項目</button>
             `;
             document.getElementById('saveBtn').classList.add('hidden');
             modal.classList.remove('hidden');
@@ -296,12 +289,10 @@
             const idx = events.findIndex(e => e.id === id);
             if (idx > -1) {
                 events[idx].extendedProps.isDone = true;
-                // 如果是「預定行程 (plan)」，完成後留在日曆上並變綠色
                 if (events[idx].extendedProps.type === 'plan') {
                     events[idx].color = '#10b981'; 
                     events[idx].title = '✅ ' + events[idx].extendedProps.originalName + (events[idx].extendedProps.hour ? ` [${events[idx].extendedProps.hour}:${events[idx].extendedProps.min}]` : '');
                 }
-                // 如果是「代辦事項 (todo)」，在重新渲染時會被 Filter 濾掉，達成「消掉」效果
             }
             updateStorage();
             closeModal();
@@ -314,15 +305,13 @@
         }
 
         function updateStorage() {
-            localStorage.setItem('study_v8', JSON.stringify(events));
+            localStorage.setItem('study_v9', JSON.stringify(events));
             calendar.refetchEvents(); 
             renderSidebar(); 
         }
 
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
-            document.getElementById('tabTodo').classList.remove('hidden');
-            document.getElementById('tabPlan').classList.remove('hidden');
         }
     </script>
 </body>
